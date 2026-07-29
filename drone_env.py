@@ -45,9 +45,9 @@ class FPVDroneRaceEnv(gym.Env):
         self.step = 0
         self.mac_steps = 1500 
 
-        return self._get_observation(), {}
+        return self._get_obs(), {}
 
-    def step(self, action):
+    def _get_obs(self):
         # Execute one time step within the environment
         pass
 

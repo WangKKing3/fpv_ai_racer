@@ -3,11 +3,6 @@ from gymnasium import spaces
 import numpy as np
 
 class FPVDroneRaceEnv(gym.Env):
-    """
-    Custom Environment for FPV Drone Racing that follows gymnasium interface.
-    This environment simulates a drone racing scenario where the agent controls a drone to navigate through a race track.
-    """
-
     def __init__(self):
         super(FPVDroneRaceEnv, self).__init__()
         # Define the action and observation spaces
@@ -18,6 +13,7 @@ class FPVDroneRaceEnv(gym.Env):
         self.max_thrust_N = 62.4    # Maximum thrust in Newtons. (basert på 5 inch 6s drone med 1880kv motor og gemfan Freestyle 3 blade  5226)
         self.drag_coeff = 0.1       # Drag coefficient
         self.dt = 0.02              # 50 Hz simuleringsfrekvens  
+        self.max_rate = np.radians(800)
 
         # Define the race track layout (gates positions
         self.gates = np.array([

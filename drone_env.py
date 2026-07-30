@@ -48,9 +48,52 @@ class FPVDroneRaceEnv(gym.Env):
         return self._get_obs(), {}
 
     def _get_obs(self):
-        # Execute one time step within the environment
-        pass
+        target_gete = self.gates[self.current_gate_index]
+        next_gate_idx = (self.current_gate_index + 1) % len(self.gates)
+        next_target_gate = self.gates[next_gate_idx]
+        rel_target = target_gete - self.pos      
+        rel_next_target = next_target_gate - self.pos
 
-    def render(self):
-        # Render the environment
-        pass
+        return np.concatenate([ 
+            self.vel,
+            self.angles, 
+            self.ang_vel, 
+            rel_target, 
+            rel_next_target]).astype(np.float32)
+
+    def step(self, action):
+        self.step += 1
+        roll_rate_cmd, pitch_rate_cmd, yaw_rate_cmd, throttle_cmd = action
+        thrust = (throttle_cmd + 1) / 2 * self.max_thrust_N  # Scale throttle to [0, max_thrust_N]
+        self.ang_vel = np.array([roll_rate_cmd, pitch_rate_cmd, yaw_rate_cmd], dtype=np.float32)
+        self.angles += self.ang_vel * self.dt
+
+        r, p, y = self.angles
+
+        fx = thrust * (np.sin(y) * np.sin(r) + np.cos(y) * np.sin(p) * np.cos(r))
+        fy = thrust * (np.cos(y) * np.sin(r) - np.sin(y) * np.sin(p) * np.cos(r))
+        fz = thrust * (np.cos(p) * np.cos(r)) - self.mass * 9.81  # Subtract gravity
+
+        acc = np.array([fx, fy, fz]) - (self.drag_coeff * self.vel)
+
+        self.vel += acc * self.dt
+        self.pos += self.vel * self.dt
+
+        target_gate = self.gates[self.current_gate_index]
+        dist_to_gate = np.linalg.norm(self.pos - target_gate)
+        dir_to_gate = (target_gate - self.pos) / (dist_to_gate + 1e-6)  # Avoid division by zero
+        vel_toward_gate = np.dot(self.vel, dir_to_gate)
+
+        reward = vel_toward_gate * 0.1  # Reward for moving towards the gate
+        reward -= 0.05
+
+        terminated = False
+        truncated = False
+
+        if self.pos[2] < 0.0 or  dist_to_gate > 50.0:
+            reward -= 100.0
+            terminated = True
+        if self.step >= self.mac_steps:
+            truncated = True
+
+        return self._get_obs(), reward, terminated, truncated, {}
